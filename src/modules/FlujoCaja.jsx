@@ -4,10 +4,16 @@ import { fetchFromSheet } from "../api/appsScript";
 import { formatBRL, normalize } from "../utils/format";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "../components/UI";
 
-function findNumericColumns(row) {
-  return Object.entries(row)
-    .filter(([, v]) => v !== "" && !isNaN(Number(String(v).replace(/[^\d.-]/g, ""))))
-    .map(([k]) => k);
+function findNumericColumns(rows) {
+  const cols = new Set();
+  rows.forEach((row) => {
+    Object.entries(row).forEach(([k, v]) => {
+      if (v !== "" && v !== null && v !== undefined && !isNaN(Number(String(v).replace(/[^\d.-]/g, "")))) {
+        cols.add(k);
+      }
+    });
+  });
+  return [...cols];
 }
 
 // Filas de "Total" (entradas/recebimento, saidas/pagamentos): destacadas
@@ -50,7 +56,7 @@ export default function FlujoCaja() {
 
   const columns = rows[0] ? Object.keys(rows[0]) : [];
   const labelCol = columns[0];
-  const numericCols = rows[0] ? findNumericColumns(rows[0]) : [];
+  const numericCols = useMemo(() => findNumericColumns(rows), [rows]);
   const totalCol = columns.find((c) => normalize(c) === "total");
   // Columnas de periodo = todas menos la de conceptos/etiqueta.
   const periodCols = columns.filter((c) => c !== labelCol);
@@ -148,7 +154,13 @@ export default function FlujoCaja() {
                         {columns.map((col) => {
                           const esColLabel = col === labelCol;
                           const esColTotal = col === totalCol;
-                          const value = numericCols.includes(col) ? formatBRL(row[col]) : String(row[col] ?? "—");
+                          const rawValue = row[col];
+                          const vacio = rawValue === "" || rawValue === null || rawValue === undefined;
+                          const value = vacio
+                            ? "—"
+                            : numericCols.includes(col)
+                            ? formatBRL(rawValue)
+                            : String(rawValue);
                           return (
                             <td
                               key={col}

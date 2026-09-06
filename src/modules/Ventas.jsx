@@ -27,6 +27,23 @@ const TONE_ROW = {
   neutral: "bg-white",
 };
 
+// Si la misma Nota Fiscal (mismo tipo + mismo numero) aparece en mas de
+// una fila, se consolida en una sola con el monto sumado. Filas sin
+// numero de nota fiscal nunca se mezclan entre si.
+function consolidarPorNotaFiscal(rows) {
+  const map = new Map();
+  rows.forEach((r, idx) => {
+    const nf = String(r.notaFiscal ?? "").trim();
+    const key = nf ? `${r.tipoVenta}__${nf}` : `__sin_nf__${idx}`;
+    if (!map.has(key)) {
+      map.set(key, { ...r, total: Number(r.total) || 0 });
+    } else {
+      map.get(key).total += Number(r.total) || 0;
+    }
+  });
+  return [...map.values()];
+}
+
 export default function Ventas() {
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -42,7 +59,7 @@ export default function Ventas() {
     setStatus("loading");
     fetchFromSheet("ventas")
       .then((rows) => {
-        setData(rows);
+        setData(consolidarPorNotaFiscal(rows));
         setStatus("ready");
       })
       .catch((err) => {

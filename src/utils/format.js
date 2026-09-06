@@ -22,6 +22,18 @@ export function parseDateSafe(value) {
 
   const str = String(value).trim();
 
+  // yyyy-MM-dd: es el formato que devuelve Code.gs. Se parsea SIEMPRE como
+  // fecha local (anio, mes, dia) y nunca pasando el string directo a
+  // `new Date(...)`, porque un string de solo fecha en formato ISO se
+  // interpreta como medianoche UTC, lo que corre la fecha un dia hacia
+  // atras en cualquier zona horaria detras de UTC (como Brasil).
+  const isoSoloFecha = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoSoloFecha) {
+    const [, y, m, d] = isoSoloFecha;
+    const parsed = new Date(Number(y), Number(m) - 1, Number(d));
+    return isNaN(parsed) ? null : parsed;
+  }
+
   // dd/mm/yyyy o dd-mm-yyyy
   const br = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
   if (br) {
