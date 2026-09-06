@@ -70,8 +70,9 @@ const COL_INVENTARIO = {
   UNIDADES_DISPONIBLES: 16, // Q
 };
 
-// Compras MMPP: mapeo segun especificacion de tarjetas (A-D y F-G).
-// Columna E se deja sin usar salvo que la necesites mas adelante.
+// Compras MMPP: mapeo segun especificacion de tarjetas (A-D y F-G),
+// mas hasta 3 boletos a partir de la columna H. Si tu hoja real tiene
+// los boletos en otras columnas, ajusta estos indices.
 const COL_MMPP = {
   TIPO_DOCUMENTO: 0, // A
   PROVEEDOR: 1, // B
@@ -79,6 +80,18 @@ const COL_MMPP = {
   FECHA_EMISION: 3, // D
   CANTIDAD: 5, // F
   MONTO_TOTAL: 6, // G
+  BOLETOS: [
+    { VENCIMIENTO: 7, VALOR: 8, ESTADO: 9 }, // H, I, J
+    { VENCIMIENTO: 10, VALOR: 11, ESTADO: 12 }, // K, L, M
+    { VENCIMIENTO: 13, VALOR: 14, ESTADO: 15 }, // N, O, P
+  ],
+};
+
+// Ventas por producto (para el KPI "Productos mas vendidos en KG" de
+// Estadisticas): misma hoja DATA, columna F = producto, columna K = kilos.
+const COL_PRODUCTOS = {
+  PRODUCTO: 5, // F
+  KILOS: 10, // K
 };
 
 // ---------- ROUTER ----------
@@ -121,9 +134,7 @@ function doGet(e) {
         payload = ok(safeRead(getGaleria, "galeria"));
         break;
       case "productosvendidos":
-        // Placeholder: conecta aqui una hoja de ventas detalladas por
-        // producto (columnas producto + kg) si la agregas mas adelante.
-        payload = ok([]);
+        payload = ok(safeRead(getProductosVendidos, "productosVendidos"));
         break;
       case "":
         payload = fail("Falta el parametro ?action=");
@@ -267,6 +278,12 @@ function getComprasMMPP() {
     const row = rows[i];
     if (!row[COL_MMPP.PROVEEDOR] && !row[COL_MMPP.NRO]) continue;
 
+    const boletos = COL_MMPP.BOLETOS.map((b) => ({
+      fechaVencimiento: serialize(row[b.VENCIMIENTO]),
+      valorPagar: row[b.VALOR],
+      estadoPago: row[b.ESTADO],
+    })).filter((b) => b.fechaVencimiento || b.valorPagar || b.estadoPago);
+
     out.push({
       tipoDocumento: row[COL_MMPP.TIPO_DOCUMENTO],
       proveedor: row[COL_MMPP.PROVEEDOR],
@@ -274,9 +291,35 @@ function getComprasMMPP() {
       fechaEmision: serialize(row[COL_MMPP.FECHA_EMISION]),
       cantidad: row[COL_MMPP.CANTIDAD],
       montoTotal: row[COL_MMPP.MONTO_TOTAL],
+      boletos: boletos,
     });
   }
   return out;
+}
+
+// ---------- PRODUCTOS VENDIDOS (KG) ----------
+// Para el KPI de Estadisticas: suma los KG vendidos por producto,
+// contando solo filas cuyo tipo de venta sea EXACTAMENTE NF-e o NFC-e.
+function getProductosVendidos() {
+  const sheet = getSheetOrThrow(CONFIG.PRINCIPAL_ID, CONFIG.HOJA_DATA);
+  const rows = sheet.getDataRange().getValues();
+
+  const totales = {};
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const tipoVenta = String(row[COL.TIPO_VENTA] || "").trim();
+    if (tipoVenta !== "NF-e" && tipoVenta !== "NFC-e") continue;
+
+    const producto = String(row[COL_PRODUCTOS.PRODUCTO] || "").trim();
+    if (!producto) continue;
+
+    const kg = Number(row[COL_PRODUCTOS.KILOS]) || 0;
+    totales[producto] = (totales[producto] || 0) + kg;
+  }
+
+  return Object.keys(totales)
+    .map((producto) => ({ producto: producto, kg: Math.round(totales[producto] * 100) / 100 }))
+    .sort((a, b) => b.kg - a.kg);
 }
 
 // ---------- PAGOS (hojas mensuales) ----------

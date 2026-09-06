@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fetchFromSheet } from "../api/appsScript";
 import { formatBRL, normalize } from "../utils/format";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "../components/UI";
@@ -22,6 +22,11 @@ function esFilaBalance(label) {
   const n = normalize(label);
   return n.includes("geracao operacional") || n.includes("saldo operacional") || n.includes("saldo final");
 }
+
+const LINE_COLORS = [
+  "#0B2A4A", "#E8734A", "#1E7A42", "#92610C", "#7C3AED",
+  "#0EA5E9", "#DB2777", "#65A30D", "#B45309", "#334155",
+];
 
 export default function FlujoCaja() {
   const [rows, setRows] = useState([]);
@@ -46,23 +51,35 @@ export default function FlujoCaja() {
   const columns = rows[0] ? Object.keys(rows[0]) : [];
   const labelCol = columns[0];
   const numericCols = rows[0] ? findNumericColumns(rows[0]) : [];
-  // Columna literalmente llamada "Total" (ej. columna N): se destaca en
-  // negrita en todas las filas, ademas del resaltado de fila que corresponda.
   const totalCol = columns.find((c) => normalize(c) === "total");
-  const balanceCol =
-    totalCol ||
-    numericCols.find((c) => normalize(c).includes("saldo") || normalize(c).includes("balance")) ||
-    numericCols[numericCols.length - 1];
+  // Columnas de periodo = todas menos la de conceptos/etiqueta.
+  const periodCols = columns.filter((c) => c !== labelCol);
 
+  // Filas con nombre real (variable/concepto) y al menos un valor numerico:
+  // son las lineas que se grafican a lo largo del tiempo.
+  const filasGraficables = useMemo(
+    () =>
+      rows.filter((r) => {
+        const label = String(r[labelCol] ?? "").trim();
+        if (!label) return false;
+        return periodCols.some((c) => numericCols.includes(c) && r[c] !== "");
+      }),
+    [rows, labelCol, periodCols, numericCols]
+  );
+
+  // Transpone: un punto por periodo, con una serie (linea) por cada concepto.
   const chartData = useMemo(
     () =>
-      rows
-        .filter((r) => String(r[labelCol] ?? "").trim() !== "")
-        .map((r) => ({
-          label: String(r[labelCol] ?? ""),
-          valor: Number(r[balanceCol]) || 0,
-        })),
-    [rows, labelCol, balanceCol]
+      periodCols
+        .filter((c) => numericCols.includes(c))
+        .map((periodo) => {
+          const punto = { periodo };
+          filasGraficables.forEach((r) => {
+            punto[String(r[labelCol])] = Number(r[periodo]) || 0;
+          });
+          return punto;
+        }),
+    [periodCols, numericCols, filasGraficables, labelCol]
   );
 
   if (status === "loading") return <LoadingState label="Cargando flujo de caja..." />;
@@ -76,25 +93,31 @@ export default function FlujoCaja() {
         <EmptyState label="Aun no hay datos de flujo de caja." />
       ) : (
         <>
-          {balanceCol && (
-            <div className="mb-6 h-64 rounded-2xl border border-slate-100 bg-white p-4 shadow-panel">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          {chartData.length > 0 && filasGraficables.length > 0 && (
+            <div className="mb-6 h-80 rounded-2xl border border-slate-100 bg-white p-4 shadow-panel">
+              <p className="mb-2 text-sm font-medium text-slate-600">Como fluctuan los montos en el tiempo</p>
+              <ResponsiveContainer width="100%" height="90%">
+                <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 10, fill: "#94A3B8" }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval={0}
-                    angle={-35}
-                    textAnchor="end"
-                    height={70}
-                  />
+                  <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} width={70} />
                   <Tooltip formatter={(v) => formatBRL(v)} />
-                  <Bar dataKey="valor" radius={[6, 6, 0, 0]} fill="#E8734A" />
-                </BarChart>
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  {filasGraficables.map((r, i) => {
+                    const label = String(r[labelCol]);
+                    const destacada = esFilaTotal(label) || esFilaBalance(label);
+                    return (
+                      <Line
+                        key={label}
+                        type="monotone"
+                        dataKey={label}
+                        stroke={LINE_COLORS[i % LINE_COLORS.length]}
+                        strokeWidth={destacada ? 3 : 1.5}
+                        dot={{ r: destacada ? 3 : 2 }}
+                      />
+                    );
+                  })}
+                </LineChart>
               </ResponsiveContainer>
             </div>
           )}
@@ -116,25 +139,22 @@ export default function FlujoCaja() {
                     const label = row[labelCol];
                     const filaTotal = esFilaTotal(label);
                     const filaBalance = esFilaBalance(label);
-                    const rowClass = filaBalance
-                      ? "bg-coral-soft"
-                      : filaTotal
-                      ? "bg-slate-100"
-                      : "bg-white";
+                    const rowClass = filaBalance ? "bg-coral-soft" : filaTotal ? "bg-slate-100" : "bg-white";
                     const textClass = filaBalance || filaTotal ? "font-bold text-navy" : "text-slate-600";
                     const sizeClass = filaBalance ? "text-base" : filaTotal ? "text-[0.95rem]" : "";
 
                     return (
                       <tr key={i} className={rowClass}>
                         {columns.map((col) => {
+                          const esColLabel = col === labelCol;
                           const esColTotal = col === totalCol;
                           const value = numericCols.includes(col) ? formatBRL(row[col]) : String(row[col] ?? "—");
                           return (
                             <td
                               key={col}
                               className={`whitespace-nowrap px-4 py-3 ${textClass} ${sizeClass} ${
-                                esColTotal && !filaTotal && !filaBalance ? "font-bold text-navy" : ""
-                              }`}
+                                esColLabel ? "font-medium text-slate-700" : ""
+                              } ${esColTotal && !filaTotal && !filaBalance ? "font-bold text-navy" : ""}`}
                             >
                               {value}
                             </td>

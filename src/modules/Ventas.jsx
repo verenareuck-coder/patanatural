@@ -36,6 +36,7 @@ export default function Ventas() {
   const [cliente, setCliente] = useState("");
   const [mes, setMes] = useState("");
   const [tipoVenta, setTipoVenta] = useState("");
+  const [pago, setPago] = useState("");
 
   function load() {
     setStatus("loading");
@@ -74,6 +75,11 @@ export default function Ventas() {
     [data]
   );
 
+  const estadosPago = useMemo(
+    () => [...new Set(data.map((d) => d.estadoPago).filter(Boolean))].sort(),
+    [data]
+  );
+
   const meses = useMemo(() => {
     const map = new Map();
     data.forEach((d) => {
@@ -89,9 +95,10 @@ export default function Ventas() {
       if (cliente && !normalize(s.cliente).includes(normalize(cliente))) return false;
       if (mes && monthKey(s.fecha) !== mes) return false;
       if (tipoVenta && s.tipoVenta !== tipoVenta) return false;
+      if (pago && s.estadoPago !== pago) return false;
       return true;
     });
-  }, [dataOrdenada, vendedor, cliente, mes, tipoVenta]);
+  }, [dataOrdenada, vendedor, cliente, mes, tipoVenta, pago]);
 
   const total = filtered.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 
@@ -143,6 +150,7 @@ export default function Ventas() {
           options={tiposVenta}
           placeholder="Filtrar por tipo de venta"
         />
+        <SelectInput value={pago} onChange={setPago} options={estadosPago} placeholder="Filtrar por pago" />
       </div>
 
       {filtered.length === 0 ? (
@@ -159,7 +167,7 @@ export default function Ventas() {
                     <th className="px-4 py-3 font-medium">Cliente</th>
                     <th className="px-4 py-3 font-medium">Tipo</th>
                     <th className="px-4 py-3 font-medium">N° NF</th>
-                    <th className="px-4 py-3 font-medium">Estado</th>
+                    <th className="px-4 py-3 font-medium">Pago</th>
                     <th className="px-4 py-3 font-medium">Vencimiento</th>
                     <th className="px-4 py-3 font-medium">Fecha pago</th>
                     <th className="px-4 py-3 text-right font-medium">Total</th>

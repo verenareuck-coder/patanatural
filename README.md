@@ -190,7 +190,29 @@ abren la vista previa de Drive en una pestaña nueva.
   tipo de venta EXACTO "NF-e" o "NFC-e", ignorando "NF-e_M" y "Nf-e_Rd"
   (aunque esos si aparecen en el modulo Ventas normal).
 
-## 10. Paleta y tipografia
+## 11. Ajustes de la ultima ronda
+
+- **Ventas**: columna "Estado" renombrada a "Pago" + nuevo filtro por Pago.
+- **Compras MMPP**: boletos de vuelta (hasta 3), leidos desde las columnas
+  H en adelante (`COL_MMPP.BOLETOS` en `Code.gs`) — como no diste el
+  detalle exacto de estas columnas esta vez, es una suposicion razonable;
+  ajustala si no calza con tu hoja real. Orden por fecha de emision, mas
+  reciente arriba.
+- **Pagos**: se corrigio un bug real — la deteccion del monto tomaba el
+  nombre de columna de forma EXACTA (ej. solo "total", no "Total Mes"),
+  por eso siempre daba $0. Ahora usa coincidencia parcial, y busca la fila
+  de "Total" en cualquier columna, no solo la primera.
+- **Flujo de Caja**: el grafico ahora es de lineas, una por cada
+  concepto/variable, mostrando su evolucion a traves de las columnas de
+  periodo (en vez de comparar conceptos entre si en un solo momento).
+- **Estadisticas**: se quitaron los 4 KPI superiores. "Productos mas
+  vendidos (KG)" ahora usa datos reales (hoja DATA, columna F=producto,
+  K=kilos, solo ventas NF-e/NFC-e). El grafico de "Gastos operativos" se
+  reemplazo por "Aportes de capital de los socios", leyendo las filas de
+  D. Reuck y R. Alvarez del Flujo de Caja (busqueda por apellido en la
+  etiqueta de fila, columna "Total").
+
+## 12. Paleta y tipografia
 
 - Sidebar azul marino `#0B2A4A`, acento salmon `#E8734A` (coherente con el
   producto: salmon ahumado), fondo principal blanco.

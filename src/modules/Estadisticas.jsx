@@ -13,37 +13,26 @@ import {
 } from "recharts";
 import { fetchFromSheet } from "../api/appsScript";
 import { formatBRL, formatMonthLabel, monthKey, normalize } from "../utils/format";
-import { EmptyState, ErrorState, LoadingState, PageHeader, StatCard } from "../components/UI";
-
-const RESPONSABLE_FIELDS = ["responsable", "responsible", "encargado"];
-const AMOUNT_FIELDS = ["monto", "valor", "total", "importe"];
-
-function pickField(record, candidates) {
-  const key = Object.keys(record).find((k) => candidates.includes(normalize(k)));
-  return key ? record[key] : undefined;
-}
+import { EmptyState, ErrorState, LoadingState, PageHeader } from "../components/UI";
 
 export default function Estadisticas() {
   const [ventas, setVentas] = useState(null);
   const [ventasError, setVentasError] = useState("");
-  const [gastos, setGastos] = useState(null);
   const [productos, setProductos] = useState(null);
+  const [flujo, setFlujo] = useState(null);
 
   useEffect(() => {
     fetchFromSheet("ventas")
       .then(setVentas)
       .catch((err) => setVentasError(err.message));
 
-    fetchFromSheet("pagosMeses")
-      .then((meses) =>
-        Promise.all(meses.map((mes) => fetchFromSheet("pagos", { mes }).catch(() => [])))
-      )
-      .then((lists) => setGastos(lists.flat()))
-      .catch(() => setGastos([]));
-
     fetchFromSheet("productosVendidos")
       .then(setProductos)
       .catch(() => setProductos([]));
+
+    fetchFromSheet("flujoCaja")
+      .then(setFlujo)
+      .catch(() => setFlujo([]));
   }, []);
 
   const ventasValidas = useMemo(() => {
@@ -81,25 +70,29 @@ export default function Estadisticas() {
       .slice(0, 6);
   }, [ventasValidas]);
 
-  const gastosPorResponsable = useMemo(() => {
-    if (!gastos) return [];
-    const map = new Map();
-    gastos.forEach((g) => {
-      const key = pickField(g, RESPONSABLE_FIELDS) || "Sin asignar";
-      const monto = Number(pickField(g, AMOUNT_FIELDS)) || 0;
-      map.set(key, (map.get(key) || 0) + monto);
-    });
-    return [...map.entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
-  }, [gastos]);
+  // Aportes de capital de los socios: se leen de dos filas especificas del
+  // Flujo de Caja (columna "Total" de cada una), traduciendo la etiqueta
+  // de portugues a espanol para mostrarla.
+  const aportesSocios = useMemo(() => {
+    if (!flujo || flujo.length === 0) return [];
+    const columns = Object.keys(flujo[0]);
+    const labelCol = columns[0];
+    const totalCol = columns.find((c) => normalize(c) === "total") || columns[columns.length - 1];
 
-  const totalVentas = useMemo(
-    () => (ventasValidas ? ventasValidas.reduce((s, v) => s + (Number(v.total) || 0), 0) : 0),
-    [ventasValidas]
-  );
-  const totalGastos = useMemo(
-    () => gastosPorResponsable.reduce((s, g) => s + g.total, 0),
-    [gastosPorResponsable]
-  );
+    const buscarFila = (patron) => flujo.find((r) => normalize(r[labelCol]).includes(patron));
+
+    const filaReuck = buscarFila("d. reuck") || buscarFila("reuck");
+    const filaAlvarez = buscarFila("r. alvarez") || buscarFila("alvarez");
+
+    const resultado = [];
+    if (filaReuck) {
+      resultado.push({ name: "Aportes de Diether Reuck", total: Number(filaReuck[totalCol]) || 0 });
+    }
+    if (filaAlvarez) {
+      resultado.push({ name: "Aportes de Roberto Alvarez", total: Number(filaAlvarez[totalCol]) || 0 });
+    }
+    return resultado;
+  }, [flujo]);
 
   if (ventasError) return <ErrorState message={ventasError} />;
   if (ventas === null) return <LoadingState label="Calculando estadisticas..." />;
@@ -110,19 +103,7 @@ export default function Estadisticas() {
     <div>
       <PageHeader title="Estadisticas" description="Indicadores clave de rendimiento" />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Ventas totales" value={formatBRL(totalVentas)} accent="navy" />
-        <StatCard
-          label="Mejor vendedor"
-          value={topVendedores[0]?.name ?? "—"}
-          sub={topVendedores[0] ? formatBRL(topVendedores[0].total) : undefined}
-          accent="coral"
-        />
-        <StatCard label="Notas fiscales" value={ventasValidas.length} accent="navy" />
-        <StatCard label="Gastos operativos" value={formatBRL(totalGastos)} accent="warn" />
-      </div>
-
-      <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-panel">
           <p className="mb-3 text-sm font-medium text-slate-600">Ventas mensuales</p>
           {ventasPorMes.length === 0 ? (
@@ -175,13 +156,13 @@ export default function Estadisticas() {
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-panel">
           <p className="mb-3 text-sm font-medium text-slate-600">Productos mas vendidos (KG)</p>
           {!productos || productos.length === 0 ? (
-            <EmptyState label="Conecta una hoja de detalle de ventas por producto (accion 'productosVendidos' en Code.gs) para habilitar este grafico." />
+            <EmptyState label="Aun no hay ventas con producto y KG registrados (columnas F y K de la hoja DATA)." />
           ) : (
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={productos} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <BarChart data={productos.slice(0, 8)} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                  <XAxis dataKey="producto" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="producto" tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} width={50} />
                   <Tooltip formatter={(v) => `${v} kg`} />
                   <Bar dataKey="kg" radius={[6, 6, 0, 0]} fill="#0B2A4A" />
@@ -192,17 +173,17 @@ export default function Estadisticas() {
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-panel">
-          <p className="mb-3 text-sm font-medium text-slate-600">Gastos operativos por responsable</p>
-          {!gastos ? (
-            <LoadingState label="Cargando gastos..." />
-          ) : gastosPorResponsable.length === 0 ? (
-            <EmptyState label="Sin gastos registrados." />
+          <p className="mb-3 text-sm font-medium text-slate-600">Aportes de capital de los socios</p>
+          {!flujo ? (
+            <LoadingState label="Cargando flujo de caja..." />
+          ) : aportesSocios.length === 0 ? (
+            <EmptyState label="No se encontraron las filas de aportes de D. Reuck / R. Alvarez en Flujo de Caja." />
           ) : (
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={gastosPorResponsable} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <BarChart data={aportesSocios} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} width={60} />
                   <Tooltip formatter={(v) => formatBRL(v)} />
                   <Bar dataKey="total" radius={[6, 6, 0, 0]} fill="#E8734A" />

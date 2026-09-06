@@ -8,13 +8,20 @@ const AMOUNT_FIELDS = ["monto", "valor", "total", "importe", "pago", "preco", "p
 const RESPONSABLE_FIELDS = ["responsable", "responsible", "encargado"];
 
 function pickField(record, candidates) {
-  const key = Object.keys(record).find((k) => candidates.includes(normalize(k)));
+  const key = Object.keys(record).find((k) => candidates.some((c) => normalize(k).includes(c)));
   return key ? record[key] : undefined;
 }
 
 function esColumnaMonetaria(nombreColumna) {
   const n = normalize(nombreColumna);
   return AMOUNT_FIELDS.some((f) => n.includes(f));
+}
+
+// Busca la palabra "total" en CUALQUIER columna de texto de la fila (no
+// solo la primera), porque en muchas hojas la etiqueta "Total Mes" no
+// esta en la columna A sino en la de "Descripcion" o similar.
+function esFilaDeTotal(row) {
+  return Object.values(row).some((v) => typeof v === "string" && normalize(v).includes("total"));
 }
 
 export default function Pagos() {
@@ -53,16 +60,14 @@ export default function Pagos() {
   }, [mesActivo]);
 
   const columns = rows[0] ? Object.keys(rows[0]) : [];
-  const labelCol = columns[0];
 
   // Fila de resumen que la propia planilla ya trae (ej. "Total Mes"): la
   // excluimos del listado de registros individuales, y usamos SU monto
   // como el total mostrado, en vez de recalcularlo nosotros (evita
   // diferencias de redondeo o doble conteo).
   const totalRowFromSheet = useMemo(() => {
-    if (!labelCol) return null;
-    return rows.find((r) => normalize(r[labelCol]).includes("total")) || null;
-  }, [rows, labelCol]);
+    return rows.find((r) => esFilaDeTotal(r)) || null;
+  }, [rows]);
 
   const rowsSinTotal = useMemo(() => {
     if (!totalRowFromSheet) return rows;
