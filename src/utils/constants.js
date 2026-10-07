@@ -15,7 +15,6 @@ export const MODULES = [
   { key: "comisiones", label: "Comisiones", icon: "Percent", roles: ["trabajador", "gerencia"] },
   { key: "inventario", label: "Inventario", icon: "Package", roles: ["trabajador", "gerencia"] },
   { key: "cartera", label: "Cartera de Clientes", icon: "Users", roles: ["trabajador", "gerencia"] },
-  { key: "galeria", label: "Fotos y Fichas", icon: "Images", roles: ["trabajador", "gerencia"] },
   { key: "comprasMMPP", label: "Compras MMPP", icon: "Fish", roles: ["gerencia"] },
   { key: "pagos", label: "Pagos", icon: "CreditCard", roles: ["gerencia"] },
   { key: "flujoCaja", label: "Flujo de Caja", icon: "TrendingUp", roles: ["gerencia"] },

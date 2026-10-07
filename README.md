@@ -212,7 +212,34 @@ abren la vista previa de Drive en una pestaña nueva.
   D. Reuck y R. Alvarez del Flujo de Caja (busqueda por apellido en la
   etiqueta de fila, columna "Total").
 
-## 12. Paleta y tipografia
+## 13. Ajustes de esta ronda
+
+- **Fotos y Fichas**: se quito del menu y de las rutas de React. El
+  backend (accion `galeria` en `Code.gs`) se dejo intacto por si quieres
+  reactivarla despues — no hace falta tocar Apps Script para esto.
+- **Inventario**: ahora hay un selector "Inventario PN" / "Inventario
+  Nixxen" arriba del modulo. **Importante:** no me diste el detalle exacto
+  de que columna es cada cosa en "Inventario Nixxen" (solo "de la A a la
+  N"), asi que `COL_INVENTARIO_NIXXEN` en `Code.gs` es una suposicion
+  (producto en B, tamano en C, kg en M, unidades en N) — ajustala apenas
+  la revises con datos reales. Tambien asumi que esta hoja vive en la
+  MISMA planilla que "Inventario PN"; si es un archivo de Sheets distinto,
+  cambia `INVENTARIO_NIXXEN_ID`. Ya NO se oculta ninguna fila en ningun
+  origen.
+- **Ventas**: el backend ahora solo devuelve los ultimos 3 meses
+  (incluyendo el actual) directo desde `Code.gs` — los datos mas viejos ni
+  siquiera se transfieren, no es solo un filtro visual.
+- **Comisiones**: se agrego "Carlos Garcia" a los 4 vendedores visibles.
+- **Pagos**: vuelve a mostrar todas las filas tal cual vienen de tu hoja,
+  incluyendo su propia fila de total al final. Se quito el recuadro azul
+  de resumen.
+- **Flujo de Caja**: se quito el grafico de este modulo (la tabla de
+  conceptos/montos con sus resaltados sigue igual).
+- **Estadisticas**: nuevo grafico de lineas "Salidas Totales vs. Meses",
+  leyendo la fila "Total Saidas/Pagamentos" del Flujo de Caja a traves de
+  sus columnas de periodo/mes.
+
+## 14. Paleta y tipografia
 
 - Sidebar azul marino `#0B2A4A`, acento salmon `#E8734A` (coherente con el
   producto: salmon ahumado), fondo principal blanco.

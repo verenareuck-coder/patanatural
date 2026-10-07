@@ -6,7 +6,7 @@ import { EmptyState, ErrorState, LoadingState, PageHeader } from "../components/
 
 // Unicos vendedores que se muestran en el resumen. Cualquier otro
 // (incluyendo Diether Reuck y Roberto Alvarez) queda fuera del calculo.
-const VENDEDORES_VISIBLES = ["Ricardo Aguero", "Ricardo Battistini", "Verena Reuck"];
+const VENDEDORES_VISIBLES = ["Ricardo Aguero", "Ricardo Battistini", "Verena Reuck", "Carlos Garcia"];
 const VENDEDORES_NORMALIZADOS = VENDEDORES_VISIBLES.map(normalize);
 
 export default function Comisiones() {

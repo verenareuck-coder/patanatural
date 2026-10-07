@@ -8,7 +8,6 @@ import Ventas from "./modules/Ventas.jsx";
 import Comisiones from "./modules/Comisiones.jsx";
 import Inventario from "./modules/Inventario.jsx";
 import CarteraClientes from "./modules/CarteraClientes.jsx";
-import Galeria from "./modules/Galeria.jsx";
 import ComprasMMPP from "./modules/ComprasMMPP.jsx";
 import Pagos from "./modules/Pagos.jsx";
 import FlujoCaja from "./modules/FlujoCaja.jsx";
@@ -19,7 +18,6 @@ const MODULE_COMPONENTS = {
   comisiones: Comisiones,
   inventario: Inventario,
   cartera: CarteraClientes,
-  galeria: Galeria,
   comprasMMPP: ComprasMMPP,
   pagos: Pagos,
   flujoCaja: FlujoCaja,

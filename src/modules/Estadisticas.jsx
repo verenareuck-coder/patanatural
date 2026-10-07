@@ -94,6 +94,20 @@ export default function Estadisticas() {
     return resultado;
   }, [flujo]);
 
+  // Salidas Totales vs. Meses: toma la fila "Total Saidas/Pagamentos" del
+  // Flujo de Caja y grafica su valor mes a mes (cada columna de periodo).
+  const salidasPorMes = useMemo(() => {
+    if (!flujo || flujo.length === 0) return [];
+    const columns = Object.keys(flujo[0]);
+    const labelCol = columns[0];
+    const periodCols = columns.filter((c) => c !== labelCol && normalize(c) !== "total");
+
+    const filaSalidas = flujo.find((r) => normalize(r[labelCol]).includes("total saidas"));
+    if (!filaSalidas) return [];
+
+    return periodCols.map((mes) => ({ mes, total: Number(filaSalidas[mes]) || 0 }));
+  }, [flujo]);
+
   if (ventasError) return <ErrorState message={ventasError} />;
   if (ventas === null) return <LoadingState label="Calculando estadisticas..." />;
 
@@ -167,6 +181,27 @@ export default function Estadisticas() {
                   <Tooltip formatter={(v) => `${v} kg`} />
                   <Bar dataKey="kg" radius={[6, 6, 0, 0]} fill="#0B2A4A" />
                 </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-panel">
+          <p className="mb-3 text-sm font-medium text-slate-600">Salidas Totales vs. Meses</p>
+          {!flujo ? (
+            <LoadingState label="Cargando flujo de caja..." />
+          ) : salidasPorMes.length === 0 ? (
+            <EmptyState label="No se encontro la fila 'Total Saidas/Pagamentos' en Flujo de Caja." />
+          ) : (
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={salidasPorMes} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                  <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} width={60} />
+                  <Tooltip formatter={(v) => formatBRL(v)} />
+                  <Line type="monotone" dataKey="total" stroke="#B91C1C" strokeWidth={2.5} dot={{ r: 3 }} />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           )}

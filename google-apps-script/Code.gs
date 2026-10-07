@@ -27,6 +27,11 @@ const CONFIG = {
   PRINCIPAL_ID: "1rz0ztf4fkgPBby0A0l2QSnBCvgUNwNZs_WoACbFxDq0",
   HOJA_DATA: "DATA",
   HOJA_INVENTARIO: "Inventario PN",
+  // Asume que esta hoja vive en la MISMA planilla (PRINCIPAL_ID). Si en
+  // realidad esta en otro archivo de Sheets, cambia INVENTARIO_NIXXEN_ID
+  // mas abajo por el ID de esa planilla.
+  HOJA_INVENTARIO_NIXXEN: "Inventario Nixxen",
+  INVENTARIO_NIXXEN_ID: "1rz0ztf4fkgPBby0A0l2QSnBCvgUNwNZs_WoACbFxDq0",
 
   // Cartera de clientes
   CARTERA_ID: "1tp-lup74j0tBvs8rpcCm34HBLUjtNFAkqCf14onTkgg",
@@ -70,6 +75,18 @@ const COL_INVENTARIO = {
   UNIDADES_DISPONIBLES: 16, // Q
 };
 
+// SUPOSICION A VERIFICAR: solo se indico "columnas de la A a la N" para
+// esta hoja, sin precisar cual columna es cual. Mientras confirmas el
+// detalle, se asume la misma logica que Inventario PN (producto en B,
+// tamano en C) pero con kg/unidades reubicados dentro del rango A-N.
+// Ajusta estos 4 numeros apenas confirmes el orden real de tu hoja.
+const COL_INVENTARIO_NIXXEN = {
+  PRODUCTO: 1, // B
+  TAMANO: 2, // C
+  KG_DISPONIBLES: 12, // M
+  UNIDADES_DISPONIBLES: 13, // N
+};
+
 // Compras MMPP: mapeo segun especificacion de tarjetas (A-D y F-G),
 // mas hasta 3 boletos a partir de la columna H. Si tu hoja real tiene
 // los boletos en otras columnas, ajusta estos indices.
@@ -109,7 +126,11 @@ function doGet(e) {
         payload = ok(safeRead(getComisiones, "comisiones"));
         break;
       case "inventario":
-        payload = ok(safeRead(getInventario, "inventario"));
+        payload = ok(
+          safeRead(function () {
+            return getInventario(e.parameter ? e.parameter.origen : null);
+          }, "inventario")
+        );
         break;
       case "cartera":
       case "clientes":
@@ -194,15 +215,24 @@ function getSheetOrThrow(spreadsheetId, sheetName) {
 }
 
 // ---------- VENTAS ----------
+// Solo se devuelven los ultimos 3 meses (incluyendo el actual) para
+// aligerar la respuesta. El filtro de mes del frontend sigue funcionando
+// igual, solo que ahora no hay meses mas antiguos para elegir.
 function getVentas() {
   const sheet = getSheetOrThrow(CONFIG.PRINCIPAL_ID, CONFIG.HOJA_DATA);
   const rows = sheet.getDataRange().getValues();
+
+  const hoy = new Date();
+  const limite = new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1);
 
   const out = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     const tipoVenta = String(row[COL.TIPO_VENTA] || "").trim();
     if (CONFIG.TIPOS_VENTA_VALIDOS.indexOf(tipoVenta) === -1) continue;
+
+    const fechaVenta = row[COL.FECHA];
+    if (fechaVenta instanceof Date && fechaVenta < limite) continue;
 
     out.push({
       fecha: serialize(row[COL.FECHA]),
@@ -242,19 +272,27 @@ function getComisiones() {
 }
 
 // ---------- INVENTARIO ----------
-function getInventario() {
-  const sheet = getSheetOrThrow(CONFIG.PRINCIPAL_ID, CONFIG.HOJA_INVENTARIO);
+// origen: "pn" (default) o "nixxen". Ambos devuelven EXACTAMENTE la misma
+// forma de objeto para que el frontend los renderice identico.
+function getInventario(origen) {
+  const esNixxen = String(origen || "").trim().toLowerCase() === "nixxen";
+
+  const spreadsheetId = esNixxen ? CONFIG.INVENTARIO_NIXXEN_ID : CONFIG.PRINCIPAL_ID;
+  const hoja = esNixxen ? CONFIG.HOJA_INVENTARIO_NIXXEN : CONFIG.HOJA_INVENTARIO;
+  const mapa = esNixxen ? COL_INVENTARIO_NIXXEN : COL_INVENTARIO;
+
+  const sheet = getSheetOrThrow(spreadsheetId, hoja);
   const rows = sheet.getDataRange().getValues();
 
   const out = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row[COL_INVENTARIO.PRODUCTO]) continue;
+    if (!row[mapa.PRODUCTO]) continue;
     out.push({
-      producto: row[COL_INVENTARIO.PRODUCTO],
-      tamano: row[COL_INVENTARIO.TAMANO],
-      kgDisponibles: row[COL_INVENTARIO.KG_DISPONIBLES],
-      unidadesDisponibles: row[COL_INVENTARIO.UNIDADES_DISPONIBLES],
+      producto: row[mapa.PRODUCTO],
+      tamano: row[mapa.TAMANO],
+      kgDisponibles: row[mapa.KG_DISPONIBLES],
+      unidadesDisponibles: row[mapa.UNIDADES_DISPONIBLES],
     });
   }
   return out;
