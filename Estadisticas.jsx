@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { fetchFromSheet } from "../api/appsScript";
+import { fetchFromSheet, fetchProductosVendidos, fetchVentas } from "../api/appsScript";
 import { formatBRL, formatMonthLabel, monthKey, normalize } from "../utils/format";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "../components/UI";
 
@@ -22,11 +22,11 @@ export default function Estadisticas() {
   const [flujo, setFlujo] = useState(null);
 
   useEffect(() => {
-    fetchFromSheet("ventas")
+    fetchVentas()
       .then(setVentas)
       .catch((err) => setVentasError(err.message));
 
-    fetchFromSheet("productosVendidos")
+    fetchProductosVendidos()
       .then(setProductos)
       .catch(() => setProductos([]));
 

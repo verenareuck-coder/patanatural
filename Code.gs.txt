@@ -125,7 +125,11 @@ function doGet(e) {
   try {
     switch (action) {
       case "ventas":
-        payload = ok(safeRead(getVentas, "ventas"));
+        payload = ok(
+          safeRead(function () {
+            return getVentas(e && e.parameter ? e.parameter.anio : null);
+          }, "ventas")
+        );
         break;
       case "comisiones":
         payload = ok(safeRead(getComisiones, "comisiones"));
@@ -160,7 +164,11 @@ function doGet(e) {
         payload = ok(safeRead(getGaleria, "galeria"));
         break;
       case "productosvendidos":
-        payload = ok(safeRead(getProductosVendidos, "productosVendidos"));
+        payload = ok(
+          safeRead(function () {
+            return getProductosVendidos(e && e.parameter ? e.parameter.anio : null);
+          }, "productosVendidos")
+        );
         break;
       case "":
         payload = fail("Falta el parametro ?action=");
@@ -222,16 +230,39 @@ function getSheetOrThrow(spreadsheetId, sheetName) {
   return sheet;
 }
 
+// ---------- RANGO ANUAL (compartido por Ventas y Productos vendidos) ----------
+// Devuelve el rango "yyyy-MM-dd" del anio pedido: del 1 de enero hasta HOY
+// si es el anio en curso (o hasta el 31 de diciembre si es un anio pasado).
+// Se usa la MISMA zona horaria que serialize(), asi las fechas coinciden
+// exactamente con las que ve el usuario en la planilla.
+function rangoAnual(anioParam) {
+  const tz = Session.getScriptTimeZone() || "GMT-3";
+  const hoy = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+  const anioActual = Number(hoy.slice(0, 4));
+  const pedido = Number(anioParam);
+  const anio = pedido >= 2000 && pedido <= 2100 ? pedido : anioActual;
+  return {
+    anio: anio,
+    desde: anio + "-01-01",
+    hasta: anio >= anioActual ? hoy : anio + "-12-31",
+  };
+}
+
+// Solo se puede juzgar si la celda es una fecha real; si no lo es (vacia o
+// texto), la fila se conserva para no perder datos por un problema de formato.
+function fechaEnRango(valor, rango) {
+  if (!(valor instanceof Date)) return true;
+  const f = serialize(valor);
+  return f >= rango.desde && f <= rango.hasta;
+}
+
 // ---------- VENTAS ----------
-// Solo se devuelven los ultimos 3 meses (incluyendo el actual) para
-// aligerar la respuesta. El filtro de mes del frontend sigue funcionando
-// igual, solo que ahora no hay meses mas antiguos para elegir.
-function getVentas() {
+// Devuelve TODAS las ventas del anio en curso hasta hoy (o del anio pedido
+// con ?anio=2026). El filtro de mes se hace en el frontend.
+function getVentas(anioParam) {
   const sheet = getSheetOrThrow(CONFIG.PRINCIPAL_ID, CONFIG.HOJA_DATA);
   const rows = sheet.getDataRange().getValues();
-
-  const hoy = new Date();
-  const limite = new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1);
+  const rango = rangoAnual(anioParam);
 
   const out = [];
   for (let i = 1; i < rows.length; i++) {
@@ -239,8 +270,7 @@ function getVentas() {
     const tipoVenta = String(row[COL.TIPO_VENTA] || "").trim();
     if (CONFIG.TIPOS_VENTA_VALIDOS.indexOf(tipoVenta) === -1) continue;
 
-    const fechaVenta = row[COL.FECHA];
-    if (fechaVenta instanceof Date && fechaVenta < limite) continue;
+    if (!fechaEnRango(row[COL.FECHA], rango)) continue;
 
     out.push({
       fecha: serialize(row[COL.FECHA]),
@@ -346,15 +376,17 @@ function getComprasMMPP() {
 // ---------- PRODUCTOS VENDIDOS (KG) ----------
 // Para el KPI de Estadisticas: suma los KG vendidos por producto,
 // contando solo filas cuyo tipo de venta sea EXACTAMENTE NF-e o NFC-e.
-function getProductosVendidos() {
+function getProductosVendidos(anioParam) {
   const sheet = getSheetOrThrow(CONFIG.PRINCIPAL_ID, CONFIG.HOJA_DATA);
   const rows = sheet.getDataRange().getValues();
+  const rango = rangoAnual(anioParam);
 
   const totales = {};
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     const tipoVenta = String(row[COL.TIPO_VENTA] || "").trim();
     if (tipoVenta !== "NF-e" && tipoVenta !== "NFC-e") continue;
+    if (!fechaEnRango(row[COL.FECHA], rango)) continue;
 
     const producto = String(row[COL_PRODUCTOS.PRODUCTO] || "").trim();
     if (!producto) continue;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Receipt } from "lucide-react";
-import { fetchFromSheet } from "../api/appsScript";
+import { fetchVentas } from "../api/appsScript";
 import {
   formatBRL,
   formatDate,
@@ -45,6 +45,7 @@ function consolidarPorNotaFiscal(rows) {
 }
 
 export default function Ventas() {
+  const anio = new Date().getFullYear();
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("loading");
   const [errorMsg, setErrorMsg] = useState("");
@@ -57,7 +58,7 @@ export default function Ventas() {
 
   function load() {
     setStatus("loading");
-    fetchFromSheet("ventas")
+    fetchVentas(anio)
       .then((rows) => {
         setData(consolidarPorNotaFiscal(rows));
         setStatus("ready");
@@ -136,7 +137,7 @@ export default function Ventas() {
     <div>
       <PageHeader
         title="Ventas"
-        description="Notas fiscales emitidas (NF-e, NFC-e, NF-e_M, Nf-e_Rd) · mas recientes primero"
+        description={`Notas fiscales emitidas (NF-e, NFC-e, NF-e_M, Nf-e_Rd) · ano ${anio} hasta hoy · mas recientes primero`}
       />
 
       {proximasAVencer.length > 0 && (
@@ -158,7 +159,7 @@ export default function Ventas() {
         <SelectInput
           value={mes}
           onChange={setMes}
-          options={meses.map(([key]) => key)}
+          options={meses.map(([value, label]) => ({ value, label }))}
           placeholder="Filtrar por mes"
         />
         <SelectInput

@@ -239,9 +239,16 @@ abren la vista previa de Drive en una pestaña nueva.
   MISMA planilla que "Inventario PN"; si es un archivo de Sheets distinto,
   cambia `INVENTARIO_NIXXEN_ID`. Ya NO se oculta ninguna fila en ningun
   origen.
-- **Ventas**: el backend ahora solo devuelve los ultimos 3 meses
-  (incluyendo el actual) directo desde `Code.gs` — los datos mas viejos ni
-  siquiera se transfieren, no es solo un filtro visual.
+- **Ventas**: (actualizado) el limite de 3 meses se elimino. El backend
+  devuelve todas las ventas del anio en curso, del 1 de enero hasta hoy
+  (`?anio=AAAA` permite pedir otro anio). El filtro de mes del frontend
+  sigue igual y ahora muestra nombres ("Septiembre 2026"). Estadisticas
+  (ventas mensuales, vendedores y productos por KG) usa el mismo rango, asi
+  que se calcula con el anio completo. Filas con la fecha de venta escrita
+  como texto (no como fecha real) se conservan siempre para no perder datos.
+- **Flujo de Caja**: columna A = variables (siempre texto), B a M = meses,
+  N = Total. Solo B a N llevan formato R$. Filas sin datos se muestran como
+  titulos de seccion sombreados; las vacias dentro de una fila, como "—".
 - **Comisiones**: se agrego "Carlos Garcia" a los 4 vendedores visibles.
 - **Pagos**: vuelve a mostrar todas las filas tal cual vienen de tu hoja,
   incluyendo su propia fila de total al final. Se quito el recuadro azul

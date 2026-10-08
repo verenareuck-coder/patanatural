@@ -58,11 +58,15 @@ export function SelectInput({ value, onChange, options, placeholder }) {
       className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-coral focus:ring-2 focus:ring-coral/20"
     >
       <option value="">{placeholder}</option>
-      {options.map((opt) => (
-        <option key={opt} value={opt}>
-          {opt}
-        </option>
-      ))}
+      {options.map((opt) => {
+        const v = typeof opt === "object" ? opt.value : opt;
+        const l = typeof opt === "object" ? opt.label : opt;
+        return (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        );
+      })}
     </select>
   );
 }

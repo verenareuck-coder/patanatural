@@ -86,3 +86,19 @@ export function normalize(str) {
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 }
+
+// Convierte el valor de una celda a numero SOLO si realmente es un numero.
+// Devuelve null para celdas vacias y para texto (nunca 0): asi un texto
+// como "Saldo Inicial" jamas se formatea como moneda.
+export function aNumero(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (value === null || value === undefined) return null;
+  let s = String(value).trim();
+  if (s === "") return null;
+  s = s.replace(/^R\$\s*/i, "").replace(/\s/g, "");
+  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s); // 1234.56
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s) || /^-?\d+,\d+$/.test(s)) {
+    return Number(s.replace(/\./g, "").replace(",", ".")); // 1.234,56
+  }
+  return null;
+}

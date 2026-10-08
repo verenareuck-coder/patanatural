@@ -61,6 +61,16 @@ function construirUrl(action, params) {
   return url;
 }
 
+// Servicios de Ventas: siempre piden el anio en curso completo (1 de enero
+// hasta hoy). El backend tambien usa el anio en curso si no se envia.
+export function fetchVentas(anio = new Date().getFullYear()) {
+  return fetchFromSheet("ventas", { anio });
+}
+
+export function fetchProductosVendidos(anio = new Date().getFullYear()) {
+  return fetchFromSheet("productosVendidos", { anio });
+}
+
 export async function fetchFromSheet(action, params = {}) {
   const url = construirUrl(action, params);
 
