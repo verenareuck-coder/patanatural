@@ -53,8 +53,21 @@ automaticamente al importar la carpeta).
 |---|---|
 | `VITE_APPS_SCRIPT_URL` | URL `/exec` del Web App de Apps Script |
 
-Si no defines la variable, el frontend usa por defecto la URL que
-compartiste en el brief.
+Si no llega ninguna variable al build, el frontend usa por defecto el
+despliegue vigente indicado en `src/api/appsScript.js` (`DEFAULT_URL`).
+Tambien acepta el nombre `VITE_API_URL` por si ya la creaste asi.
+
+**Configuracion exacta en Netlify:** Site configuration > Environment
+variables > Add a variable. Nombre `VITE_APPS_SCRIPT_URL`, valor la URL
+completa terminada en `/exec`, sin comillas ni espacios, con alcance
+(scope) que incluya **Builds**. Despues: Deploys > Trigger deploy >
+**Clear cache and deploy site** (Vite incrusta la variable en el build,
+no se lee en tiempo real).
+
+**Si ves un error 404:** abre F12 > Consola; la linea `[Patagonia] API en
+uso` indica de que URL sale la data, y el mensaje de error en pantalla
+dice si el 404 viene de `script.google.com` (URL/despliegue incorrecto)
+o de tu propio sitio (la variable apunta a Netlify por error).
 
 ## 3. Acceso por PIN
 

@@ -1,0 +1,16 @@
+{
+  "name": "Patagonia Natural",
+  "short_name": "Patagonia",
+  "description": "Gestion interna de ventas, inventario y produccion de salmon ahumado",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B2A4A",
+  "theme_color": "#0B2A4A",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
