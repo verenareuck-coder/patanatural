@@ -159,6 +159,9 @@ function doGet(e) {
       case "flujo":
         payload = ok(safeRead(getFlujoCaja, "flujoCaja"));
         break;
+      case "flujocajatabla":
+        payload = ok(safeRead(getFlujoCajaTabla, "flujoCajaTabla"));
+        break;
       case "galeria":
       case "fotos":
         payload = ok(safeRead(getGaleria, "galeria"));
@@ -424,6 +427,35 @@ function getPagos(mes) {
 function getFlujoCaja() {
   const sheet = getSheetOrThrow(CONFIG.PAGOS_ID, CONFIG.HOJA_FLUJO_CAJA);
   return sheetToObjects(sheet);
+}
+
+// Flujo de Caja como MATRIZ posicional (no depende de los textos de encabezado):
+//   posicion 0      = Variables (texto)   -> columna A
+//   posiciones 1-12 = Janeiro..Dezembro   -> columnas B a M
+//   posicion 13     = Total               -> columna N
+// Cada fila siempre trae exactamente 14 celdas. Las filas totalmente vacias
+// se omiten. La primera fila devuelta es la de encabezados de la hoja.
+function getFlujoCajaTabla() {
+  const N_COLUMNAS = 14;
+  const sheet = getSheetOrThrow(CONFIG.PAGOS_ID, CONFIG.HOJA_FLUJO_CAJA);
+  const ultimaFila = sheet.getLastRow();
+  if (ultimaFila < 1) return [];
+
+  const columnasReales = Math.min(N_COLUMNAS, sheet.getMaxColumns());
+  const valores = sheet.getRange(1, 1, ultimaFila, columnasReales).getValues();
+
+  const out = [];
+  valores.forEach(function (fila) {
+    const celdas = fila.map(function (c) {
+      return c instanceof Date ? serialize(c) : c;
+    });
+    while (celdas.length < N_COLUMNAS) celdas.push("");
+    const vacia = celdas.every(function (c) {
+      return c === "" || c === null;
+    });
+    if (!vacia) out.push(celdas);
+  });
+  return out;
 }
 
 // ---------- GALERIA (fotos, fichas tecnicas, presentacion) ----------

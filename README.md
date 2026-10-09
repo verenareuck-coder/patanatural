@@ -259,7 +259,26 @@ abren la vista previa de Drive en una pestaña nueva.
   leyendo la fila "Total Saidas/Pagamentos" del Flujo de Caja a traves de
   sus columnas de periodo/mes.
 
-## 14. Paleta y tipografia
+## 14. Flujo de Caja (reconstruido desde cero)
+
+`src/modules/FlujoCaja.jsx` lee la hoja **por posicion**, no por texto de
+encabezado: posicion 0 = Variables (columna A, siempre texto literal),
+1 a 12 = Janeiro..Dezembro (B a M), 13 = Total (N). Solo de la posicion 1
+en adelante se aplica formato R$.
+
+- Backend: nueva accion `flujoCajaTabla` en `Code.gs` (devuelve la hoja como
+  matriz de 14 columnas por fila). Si `Code.gs` aun no esta actualizado, la
+  pantalla usa la accion anterior `flujoCaja` y sigue funcionando.
+- Estilos segun el texto de la columna A: filas principales (Saldo Inicial,
+  Entradas / Recebimento, Saidas / Pagamentos) en gris y negrita; sub-items
+  con sangria; Total Entradas en azul; Total Saidas en rojo; Geracao
+  Operacional y Saldo Final en verde enmarcado (rojo si el valor es negativo).
+- Celda vacia = "—"; un 0 real = "R$ 0,00"; fila de titulo sin datos = celdas
+  en blanco. Toda fila tiene siempre 14 celdas, asi la tabla no se desalinea.
+- Los encabezados de meses son fijos (Janeiro..Dezembro); el de la columna A
+  es el texto de A1 (o "Variables" si esta vacio).
+
+## 15. Paleta y tipografia
 
 - Sidebar azul marino `#0B2A4A`, acento salmon `#E8734A` (coherente con el
   producto: salmon ahumado), fondo principal blanco.
